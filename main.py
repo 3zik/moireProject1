@@ -13,7 +13,7 @@ Physical concepts:
 - Interlayer tunneling: Coupling between layers creates flat bands
 - Magic angle: Twist angle where bands become nearly flat
 
-Author: Implementation based on Bistritzer & MacDonald, PNAS 2011
+Implementation based on Bistritzer & MacDonald, PNAS 2011
 """
 
 import numpy as np
@@ -21,7 +21,6 @@ import matplotlib.pyplot as plt
 from scipy.linalg import eigh
 from typing import Tuple, List, Dict
 import warnings
-warnings.filterwarnings('ignore', category=np.ComplexWarning)
 
 class TwistedBilayerGraphene:
     """
