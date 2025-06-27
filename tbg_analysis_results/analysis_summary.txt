@@ -1,0 +1,22 @@
+Twisted Bilayer Graphene - Bistritzer-MacDonald Model Analysis
+============================================================
+
+Model Parameters:
+  Twist angle: 1.080°
+  Number of shells: 3
+  Basis size: 37 G-vectors
+  Total bands: 148
+  Energy scale: 0.034 eV
+  Moiré lattice constant: 130.5 Å
+
+Generated Files:
+  1. 1_full_band_structure.png - Complete band structure
+  2. 2_flat_bands_zoom.png - Zoomed flat bands
+  3. 3_density_of_states.png - DOS calculation
+  4. 4_angle_dependence.png - Twist angle dependence
+  5. 5_convergence_analysis.png - Basis size convergence
+  6. 6_particle_hole_symmetry.png - Symmetry validation
+  7. 7_2d_band_structure.png - 2D momentum space
+  8. 8_3d_surface_plot.png - 3D surface plots
+  9. 9_wavefunction_localization.png - Wavefunction analysis
+  10. analysis_summary.txt - This summary file
