@@ -4,6 +4,12 @@ This project attempts to implement the foundational Bistritzer–MacDonald (BM) 
 
 ---
 
+## References
+
+Bistritzer, R., & MacDonald, A. H. (2011). Moiré bands in twisted double-layer graphene. PNAS, 108(30), 12233-12237. arXiv:1010.1365
+
+Cao, Y., et al. (2018). Unconventional superconductivity in magic-angle graphene superlattices. Nature, 556(7699), 43-50.
+
 ### Prerequisites
 
 Install required Python packages:
@@ -11,8 +17,7 @@ Install required Python packages:
 ```bash
 pip install numpy scipy matplotlib
 ```
-
-## Graphs/Info Generated
+## main.py Graphs/Info Generated
 
 1. Full Band Structure along High-Symmetry k-Path
 - Complete energy spectrum along Γ→K→M→Γ path
@@ -55,8 +60,75 @@ pip install numpy scipy matplotlib
 - File descriptions
 - Model validation metrics
 
-## References
 
-Bistritzer, R., & MacDonald, A. H. (2011). Moiré bands in twisted double-layer graphene. PNAS, 108(30), 12233-12237. arXiv:1010.1365
 
-Cao, Y., et al. (2018). Unconventional superconductivity in magic-angle graphene superlattices. Nature, 556(7699), 43-50.
+## Berry Curvature Analysis (`berry.py`)
+
+The Berry curvature analysis module provides comprehensive tools for computing and visualizing the topological properties of twisted bilayer graphene flat bands. This module implements state-of-the-art methods for calculating Berry curvature, Berry connections, and Chern numbers - fundamental quantities that characterize the topology of quantum states.
+
+### Features
+
+#### Core Topological Calculations
+- **Berry Curvature**: Computes the geometric curvature in momentum space using both:
+ - Direct method (Fukui-Hatsugai-Suzuki plaquette approach)
+ - Connection-based method (finite difference derivatives)
+- **Berry Connections**: Vector potential in k-space from gauge-fixed wavefunctions
+- **Chern Numbers**: Topological invariants from Berry curvature integration over the Brillouin zone
+- **Gauge Fixing**: Multiple algorithms to ensure smooth wavefunction phases:
+ - Smooth overlap method
+ - Parallel transport method
+
+ - The Berry curvature is defined as: Ω_n(k) = Im[⟨∂_kx u_n(k)| ∂_ky u_n(k)⟩] - Im[⟨∂_ky u_n(k)| ∂_kx u_n(k)⟩]
+ - The Chern number is the integral: C_n = (1/2π) ∫∫_BZ Ω_n(k) d²k
+ - These quantities are gauge-invariant and topologically protected, making them fundamental characterizations of quantum states.
+
+#### Advanced Analysis Tools
+- **2D K-point Sampling**: Dense momentum space grids with customizable resolution
+- **Twist Angle Sweeps**: Systematic analysis of topology vs twist angle
+- **Band Structure Integration**: Links topological properties to electronic structure
+- **Convergence Analysis**: Tools to verify numerical accuracy
+
+#### Visualization & Output
+- **Berry Curvature Maps**: 2D contour plots showing curvature distribution
+- **Chern Number Plots**: Bar charts and convergence analysis
+- **Comprehensive Reports**: Automated generation of publication-ready figures and data
+- **Export Capabilities**: Numerical data in `.npz` format for further analysis
+
+### Physical Significance
+
+The Berry curvature analysis reveals the topological character of TBG's flat bands:
+
+- **Chern Numbers**: Integer topological charges that remain quantized despite perturbations
+- **Berry Curvature Hotspots**: Regions of high curvature often correlate with strong electron interactions
+- **Topology-Correlation Connection**: Links geometric properties to many-body physics
+- **Magic Angle Physics**: Topological properties change dramatically near magic angles
+
+### Usage Example
+
+```python
+from main import TwistedBilayerGraphene
+from berry import BerryAnalysis
+import numpy as np
+
+# Initialize TBG model at magic angle
+theta = np.deg2rad(1.05)  # degrees
+tbg = TwistedBilayerGraphene(theta=theta)
+
+# Set up Berry analysis with 50×50 k-point grid
+berry = BerryAnalysis(tbg, n_kx=50, n_ky=50, k_range=1.2)
+
+# Run complete analysis
+results = berry.run_full_analysis(
+   gauge_method='smooth',
+   curvature_method='direct'
+)
+
+# Generate comprehensive report
+berry.generate_comprehensive_report(results)
+
+# Analyze topology vs twist angle
+theta_range = np.linspace(0.8, 1.3, 10) * np.pi/180
+angle_results = berry.analyze_topology_vs_twist_angle(theta_range)
+berry.plot_topology_vs_angle(angle_results)
+```
+
