@@ -1,5 +1,6 @@
-#!/usr/bin/env python3
 """
+ETHAN FURMAN 6/27/2025
+
 Bistritzer-MacDonald Continuum Model for Twisted Bilayer Graphene (TBG)
 
 This implementation computes the electronic band structure of twisted bilayer graphene
