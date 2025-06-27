@@ -131,24 +131,68 @@ def particle_hole_check(bands):
     errs = bands + bands[:,::-1]
     return np.max(np.abs(errs))
 
-# Perform checks
-bw = flat_band_bandwidth(bands)
-gapK = gap_at_K(bands)
-symm_err = particle_hole_check(bands)
-print(f"Flat-band bandwidth: {bw*1000:.2f} meV")
-print(f"Gap at K-point: {gapK*1000:.2f} meV")
-print(f"Max particle-hole symmetry error: {symm_err*1000:.2f} meV")
 
-# Basis convergence test example
+# -- Corrected Validation Functions --
+
+def flat_band_indices(N):
+    """Return the zero-based indices of the two magic-angle flat bands."""
+    mid = 2*N
+    return mid - 1, mid
+
+def flat_band_bandwidth(bands):
+    """
+    Compute the bandwidth of the two central (flat) bands.
+    bands: array of shape (Nk,4N) sorted in ascending energy.
+    """
+    N4 = bands.shape[1]
+    N = N4 // 4
+    i1, i2 = flat_band_indices(N)
+    # Maximum minus minimum energy across the k-path
+    bw = np.max(bands[:, i2] - bands[:, i1])
+    return bw
+
+def gap_at_K(bands):
+    """
+    Compute the direct gap between the flat bands (i2) and the next band (i2+1)
+    at the K-point position in your k_path.
+    """
+    N4 = bands.shape[1]
+    N = N4 // 4
+    _, i2 = flat_band_indices(N)
+    # K-point index is Nk/3 if your path is evenly split into thirds
+    idx_K = len(k_path) // 3
+    # Gap between band i2+1 (above the flat bands) and band i2
+    gap = bands[idx_K, i2+1] - bands[idx_K, i2]
+    return gap
+
+def particle_hole_check(bands):
+    """Check E_n + E_{-(n+1)} ~ 0 for perfect particle-hole symmetry."""
+    Nk, N4 = bands.shape
+    errs = bands + bands[:, ::-1]
+    return np.max(np.abs(errs))
+
+# -- Re-run validations --
+
+bw   = flat_band_bandwidth(bands)
+gapK = gap_at_K(bands)
+symm = particle_hole_check(bands)
+
+print(f"Flat-band (middle) bandwidth: {bw*1000:.2f} meV")
+print(f"Gap above flat bands at K-point: {gapK*1000:.2f} meV")
+print(f"Max particle-hole asymmetry: {symm*1000:.2f} meV")
+
+# Basis convergence test for the flat-band bandwidth:
 def basis_convergence(shells_list=[2,3,4]):
     results = {}
     for s in shells_list:
         Gs = generate_G_vectors(shells=s)
         kp = high_symmetry_path()
-        b = np.zeros((len(kp),4*len(Gs)))
-        for i,kpt in enumerate(kp): b[i,:] = np.sort(np.real(eigh(build_Hk(kpt, Gs))[0]))
+        b = np.zeros((len(kp), 4*len(Gs)))
+        for i, kpt in enumerate(kp):
+            b[i,:] = np.sort(np.real(eigh(build_Hk(kpt, Gs))[0]))
         results[s] = flat_band_bandwidth(b)
     return results
 
 conv = basis_convergence([2,3,4])
-print("Bandwidth vs basis shells (meV):", {s:conv[s]*1000 for s in conv})
+print("Bandwidth vs basis shells (meV):",
+      {s: conv[s]*1000 for s in conv})
