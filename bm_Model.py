@@ -48,18 +48,28 @@ sigma_y = np.array([[0,-1j],[1j,0]])
 phis = [np.arctan2(q[1], q[0]) for q in q_vecs]
 T_mats = [w0_dim*sigma0 + w1_dim*(np.cos(phi)*sigma_x + np.sin(phi)*sigma_y) for phi in phis]
 
-# Generate dimensionless G-vectors for plane-wave basis
-def generate_G_vectors(shells=3):
-    Gm = 4*np.pi/(np.sqrt(3))  # dimensionless moiré reciprocal magnitude
-    b1 = Gm * np.array([np.sqrt(3)/2, 1/2])
-    b2 = Gm * np.array([0, 1])
+# Derived physical moiré reciprocal magnitude
+L_m = a / (2 * np.sin(theta/2))                 # moiré period [m]
+Gm_phys = 4 * np.pi / (np.sqrt(3) * L_m)        # physical moiré G magnitude [1/m]
+
+# Generate G-vectors in physical units, then convert to dimensionless by dividing by k_theta
+def generate_G_vectors_physical(shells=3):
+    b1_phys = Gm_phys * np.array([np.sqrt(3)/2, 1/2])
+    b2_phys = Gm_phys * np.array([0, 1])
     Gs = []
     for i in range(-shells, shells+1):
         for j in range(-shells, shells+1):
-            Gs.append(i*b1 + j*b2)
+            Gs.append(i*b1_phys + j*b2_phys)
     return np.array(Gs)
 
-G_vectors = generate_G_vectors(shells=3)
+# generate physical G-vectors then scale to dimensionless
+G_vectors_phys = generate_G_vectors_physical(shells=3)
+G_vectors = G_vectors_phys / k_theta
+N = len(G_vectors)
+print(f"Dimensionless basis size N = {N}")
+G_vectors = G_vectors_phys / k_theta
+N = len(G_vectors)
+print(f"Dimensionless basis size N = {N}")
 N = len(G_vectors)
 print(f"Dimensionless basis size N = {N}")
 
