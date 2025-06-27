@@ -20,11 +20,16 @@ This project implements the foundational Bistritzer–MacDonald (BM) continuum m
 
 ---
 
-## Getting Started
-
 ### Prerequisites
 
 Install required Python packages:
 
 ```bash
 pip install numpy scipy matplotlib
+
+
+## References
+
+Bistritzer, R., & MacDonald, A. H. (2011). Moiré bands in twisted double-layer graphene. PNAS, 108(30), 12233-12237. arXiv:1010.1365
+
+Cao, Y., et al. (2018). Unconventional superconductivity in magic-angle graphene superlattices. Nature, 556(7699), 43-50.
