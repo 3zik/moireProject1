@@ -1,6 +1,4 @@
 """
-ETHAN FURMAN 6/27/2025
-
 Bistritzer-MacDonald Continuum Model for Twisted Bilayer Graphene (TBG)
 
 This implementation computes the electronic band structure of twisted bilayer graphene
@@ -409,6 +407,432 @@ class TwistedBilayerGraphene:
         print("="*50)
 
 
+    def compute_dos(self, eigenvalues: np.ndarray, energy_range: Tuple[float, float] = None,
+                   n_points: int = 1000, broadening: float = 0.01) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Compute density of states using Gaussian broadening.
+        
+        Args:
+            eigenvalues: Energy eigenvalues in eV
+            energy_range: Energy range for DOS calculation
+            n_points: Number of energy points
+            broadening: Gaussian broadening in eV
+            
+        Returns:
+            energies: Energy points
+            dos: Density of states
+        """
+        if energy_range is None:
+            energy_range = (np.min(eigenvalues) - 0.1, np.max(eigenvalues) + 0.1)
+        
+        energies = np.linspace(energy_range[0], energy_range[1], n_points)
+        dos = np.zeros(n_points)
+        
+        # Gaussian broadening
+        for eigen_vals in eigenvalues:
+            for E in eigen_vals:
+                dos += np.exp(-(energies - E)**2 / (2 * broadening**2))
+        
+        # Normalize
+        dos /= (np.sqrt(2 * np.pi) * broadening * len(eigenvalues))
+        
+        return energies, dos
+    
+    def compute_2d_band_structure(self, n_kx: int = 50, n_ky: int = 50, 
+                                 energy_range: float = 0.2) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Compute band structure over 2D grid in Brillouin zone.
+        
+        Args:
+            n_kx, n_ky: Number of k-points in each direction
+            energy_range: Range of k-points (in units of reciprocal lattice vectors)
+            
+        Returns:
+            kx_grid, ky_grid: 2D k-point grids
+            band_energies: 3D array of band energies [kx, ky, band]
+        """
+        # Create k-point grid
+        kx = np.linspace(-energy_range, energy_range, n_kx)
+        ky = np.linspace(-energy_range, energy_range, n_ky)
+        kx_grid, ky_grid = np.meshgrid(kx, ky)
+        
+        band_energies = np.zeros((n_kx, n_ky, self.n_bands))
+        
+        print(f"Computing 2D band structure on {n_kx}×{n_ky} grid...")
+        
+        for i in range(n_kx):
+            if i % max(1, n_kx // 10) == 0:
+                print(f"  Progress: {100*i/n_kx:.0f}%")
+            
+            for j in range(n_ky):
+                k_point = np.array([kx_grid[i, j], ky_grid[i, j]])
+                H = self.construct_hamiltonian(k_point)
+                eigvals = eigh(H, eigvals_only=True)
+                band_energies[i, j] = np.sort(np.real(eigvals)) * self.E_scale
+        
+        print("  Complete!")
+        return kx_grid, ky_grid, band_energies
+    
+    def compute_wavefunctions(self, k_points: np.ndarray, band_indices: List[int] = None) -> np.ndarray:
+        """
+        Compute wavefunctions for specified bands and k-points.
+        
+        Args:
+            k_points: Array of k-points
+            band_indices: List of band indices to compute (default: flat bands)
+            
+        Returns:
+            wavefunctions: Complex wavefunctions [k_point, band, G_vector, sublattice]
+        """
+        if band_indices is None:
+            # Default to flat bands
+            n_bands = self.n_bands
+            band_indices = list(range(n_bands//2 - 2, n_bands//2 + 2))
+        
+        n_k = len(k_points)
+        n_bands_compute = len(band_indices)
+        n_G = len(self.G_vectors)
+        
+        wavefunctions = np.zeros((n_k, n_bands_compute, n_G, 4), dtype=complex)
+        
+        for i, k in enumerate(k_points):
+            H = self.construct_hamiltonian(k)
+            eigvals, eigvecs = eigh(H)
+            
+            # Sort by eigenvalue
+            sorted_indices = np.argsort(np.real(eigvals))
+            
+            for j, band_idx in enumerate(band_indices):
+                wf = eigvecs[:, sorted_indices[band_idx]]
+                # Reshape to [G_vector, sublattice]
+                wavefunctions[i, j] = wf.reshape(n_G, 4)
+        
+        return wavefunctions
+
+def generate_comprehensive_analysis(tbg: TwistedBilayerGraphene, 
+                                  eigenvalues: np.ndarray, 
+                                  k_path: np.ndarray, 
+                                  k_distances: np.ndarray,
+                                  labels: List[str], 
+                                  label_positions: List[float]):
+    """
+    Generate comprehensive analysis plots and save them as files.
+    """
+    import os
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+    
+    # Create output directory
+    output_dir = "tbg_analysis_results"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    print(f"\nGenerating comprehensive analysis plots...")
+    print(f"Output directory: {output_dir}")
+    
+    # 1. Full Band Structure along High-Symmetry k-Path
+    print("  1. Full band structure...")
+    plt.figure(figsize=(12, 8))
+    n_bands = eigenvalues.shape[1]
+    colors = plt.cm.viridis(np.linspace(0, 1, n_bands))
+    
+    for i in range(n_bands):
+        plt.plot(k_distances, eigenvalues[:, i], color=colors[i], linewidth=1)
+    
+    for label, pos in zip(labels, label_positions):
+        plt.axvline(x=pos, color='black', linestyle='--', alpha=0.5)
+        plt.text(pos, plt.ylim()[1]*0.95, label, ha='center', va='top', fontsize=12)
+    
+    plt.xlabel('k-path', fontsize=12)
+    plt.ylabel('Energy (eV)', fontsize=12)
+    plt.title(f'TBG Full Band Structure (θ = {np.rad2deg(tbg.theta):.2f}°)', fontsize=14)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(f"{output_dir}/1_full_band_structure.png", dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 2. Zoomed-in Flat Bands near Charge Neutrality
+    print("  2. Zoomed flat bands...")
+    plt.figure(figsize=(12, 8))
+    
+    # Plot all bands in light gray
+    for i in range(n_bands):
+        plt.plot(k_distances, eigenvalues[:, i], 'lightgray', alpha=0.3, linewidth=0.5)
+    
+    # Highlight flat bands
+    central_start = n_bands // 2 - 2
+    colors = ['red', 'blue', 'blue', 'red']
+    for i, color in enumerate(colors):
+        band_idx = central_start + i
+        plt.plot(k_distances, eigenvalues[:, band_idx], 
+                color=color, linewidth=2, alpha=0.8, label=f'Band {band_idx+1}')
+    
+    for label, pos in zip(labels, label_positions):
+        plt.axvline(x=pos, color='black', linestyle='--', alpha=0.5)
+        plt.text(pos, plt.ylim()[1]*0.95, label, ha='center', va='top', fontsize=12)
+    
+    plt.axhline(y=0, color='black', linestyle='-', alpha=0.5)
+    plt.xlabel('k-path', fontsize=12)
+    plt.ylabel('Energy (eV)', fontsize=12)
+    plt.title(f'TBG Flat Bands (θ = {np.rad2deg(tbg.theta):.2f}°)', fontsize=14)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    # Zoom to flat band region
+    flat_bands = eigenvalues[:, central_start:central_start+4]
+    energy_center = np.mean(flat_bands)
+    energy_span = np.max(flat_bands) - np.min(flat_bands)
+    plt.ylim(energy_center - 2*energy_span, energy_center + 2*energy_span)
+    
+    plt.tight_layout()
+    plt.savefig(f"{output_dir}/2_flat_bands_zoom.png", dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 3. Density of States (DOS) vs Energy
+    print("  3. Density of states...")
+    energies, dos = tbg.compute_dos(eigenvalues, broadening=0.005)
+    
+    plt.figure(figsize=(10, 8))
+    plt.plot(energies, dos, 'b-', linewidth=2)
+    plt.axvline(x=0, color='red', linestyle='--', alpha=0.7, label='Charge neutrality')
+    plt.xlabel('Energy (eV)', fontsize=12)
+    plt.ylabel('Density of States (states/eV)', fontsize=12)
+    plt.title(f'TBG Density of States (θ = {np.rad2deg(tbg.theta):.2f}°)', fontsize=14)
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    
+    # Zoom to interesting region around charge neutrality
+    plt.xlim(-0.5, 0.5)
+    plt.tight_layout()
+    plt.savefig(f"{output_dir}/3_density_of_states.png", dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 4. Band Gap and Flat-Band Bandwidth vs Twist Angle
+    print("  4. Angle dependence...")
+    angles = np.linspace(0.8, 1.5, 15)
+    bandwidths = []
+    gaps = []
+    
+    for angle in angles:
+        tbg_temp = TwistedBilayerGraphene(twist_angle_deg=angle, shells=2)  # Smaller basis for speed
+        k_temp, _, _, _ = tbg_temp.generate_k_path(n_points_per_segment=30)
+        eigs_temp = tbg_temp.compute_band_structure(k_temp)
+        
+        # Compute bandwidth and gap
+        n_temp = eigs_temp.shape[1]
+        flat_start = n_temp // 2 - 2
+        flat_bands_temp = eigs_temp[:, flat_start:flat_start+4]
+        bandwidth = np.max(flat_bands_temp) - np.min(flat_bands_temp)
+        bandwidths.append(bandwidth * 1000)  # Convert to meV
+        
+        # Gap at K point (approximate)
+        k_idx = len(k_temp) // 3
+        gap = np.min(eigs_temp[k_idx, flat_start+4:]) - np.max(eigs_temp[k_idx, flat_start-1:flat_start+4])
+        gaps.append(gap * 1000)  # Convert to meV
+    
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
+    
+    ax1.plot(angles, bandwidths, 'ro-', linewidth=2, markersize=6)
+    ax1.axvline(x=1.08, color='blue', linestyle='--', alpha=0.7, label='Magic angle')
+    ax1.set_xlabel('Twist Angle (degrees)', fontsize=12)
+    ax1.set_ylabel('Flat Band Bandwidth (meV)', fontsize=12)
+    ax1.set_title('Flat Band Bandwidth vs Twist Angle', fontsize=14)
+    ax1.grid(True, alpha=0.3)
+    ax1.legend()
+    
+    ax2.plot(angles, gaps, 'bo-', linewidth=2, markersize=6)
+    ax2.axvline(x=1.08, color='blue', linestyle='--', alpha=0.7, label='Magic angle')
+    ax2.set_xlabel('Twist Angle (degrees)', fontsize=12)
+    ax2.set_ylabel('Band Gap (meV)', fontsize=12)
+    ax2.set_title('Band Gap vs Twist Angle', fontsize=14)
+    ax2.grid(True, alpha=0.3)
+    ax2.legend()
+    
+    plt.tight_layout()
+    plt.savefig(f"{output_dir}/4_angle_dependence.png", dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 5. Bandwidth and Gap Convergence vs Basis Size (Shells)
+    print("  5. Convergence analysis...")
+    shell_range = range(1, 6)
+    conv_bandwidths = []
+    conv_gaps = []
+    
+    for shells in shell_range:
+        tbg_temp = TwistedBilayerGraphene(twist_angle_deg=1.08, shells=shells)
+        k_temp, _, _, _ = tbg_temp.generate_k_path(n_points_per_segment=30)
+        eigs_temp = tbg_temp.compute_band_structure(k_temp)
+        
+        n_temp = eigs_temp.shape[1]
+        flat_start = n_temp // 2 - 2
+        flat_bands_temp = eigs_temp[:, flat_start:flat_start+4]
+        bandwidth = np.max(flat_bands_temp) - np.min(flat_bands_temp)
+        conv_bandwidths.append(bandwidth * 1000)
+        
+        k_idx = len(k_temp) // 3
+        gap = np.min(eigs_temp[k_idx, flat_start+4:]) - np.max(eigs_temp[k_idx, flat_start-1:flat_start+4])
+        conv_gaps.append(gap * 1000)
+    
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
+    
+    ax1.plot(shell_range, conv_bandwidths, 'ro-', linewidth=2, markersize=8)
+    ax1.set_xlabel('Number of Shells', fontsize=12)
+    ax1.set_ylabel('Flat Band Bandwidth (meV)', fontsize=12)
+    ax1.set_title('Convergence: Bandwidth vs Basis Size', fontsize=14)
+    ax1.grid(True, alpha=0.3)
+    
+    ax2.plot(shell_range, conv_gaps, 'bo-', linewidth=2, markersize=8)
+    ax2.set_xlabel('Number of Shells', fontsize=12)
+    ax2.set_ylabel('Band Gap (meV)', fontsize=12)
+    ax2.set_title('Convergence: Gap vs Basis Size', fontsize=14)
+    ax2.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(f"{output_dir}/5_convergence_analysis.png", dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 6. Particle-Hole Symmetry Validation Plot
+    print("  6. Particle-hole symmetry...")
+    plt.figure(figsize=(12, 8))
+    
+    # Plot E vs -E
+    all_energies = eigenvalues.flatten()
+    positive_energies = all_energies[all_energies > 0]
+    negative_energies = all_energies[all_energies < 0]
+    
+    # Create histogram
+    bins = np.linspace(-np.max(np.abs(all_energies)), np.max(np.abs(all_energies)), 50)
+    hist_pos, _ = np.histogram(positive_energies, bins=bins)
+    hist_neg, _ = np.histogram(-negative_energies, bins=bins)
+    
+    bin_centers = (bins[:-1] + bins[1:]) / 2
+    
+    plt.plot(bin_centers, hist_pos, 'r-', linewidth=2, label='Positive energies')
+    plt.plot(bin_centers, hist_neg, 'b--', linewidth=2, label='Negative energies (flipped)')
+    plt.axvline(x=0, color='black', linestyle='-', alpha=0.5)
+    
+    plt.xlabel('Energy (eV)', fontsize=12)
+    plt.ylabel('Count', fontsize=12)
+    plt.title('Particle-Hole Symmetry Check', fontsize=14)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(f"{output_dir}/6_particle_hole_symmetry.png", dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 7. 2D Color Map of Band Energy over the Full Moiré Brillouin Zone
+    print("  7. 2D band structure (this may take a while)...")
+    kx_grid, ky_grid, band_energies_2d = tbg.compute_2d_band_structure(n_kx=30, n_ky=30)
+    
+    # Plot flat bands in 2D
+    central_start = band_energies_2d.shape[2] // 2 - 2
+    fig, axes = plt.subplots(2, 2, figsize=(12, 12))
+    axes = axes.flatten()
+    
+    for i in range(4):
+        band_idx = central_start + i
+        im = axes[i].contourf(kx_grid, ky_grid, band_energies_2d[:, :, band_idx], 
+                             levels=20, cmap='RdBu_r')
+        axes[i].set_title(f'Flat Band {i+1}', fontsize=12)
+        axes[i].set_xlabel('kx', fontsize=10)
+        axes[i].set_ylabel('ky', fontsize=10)
+        plt.colorbar(im, ax=axes[i], label='Energy (eV)')
+    
+    plt.tight_layout()
+    plt.savefig(f"{output_dir}/7_2d_band_structure.png", dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 8. 3D Surface Plot of Band Energy in Momentum Space
+    print("  8. 3D surface plot...")
+    fig = plt.figure(figsize=(15, 12))
+    
+    for i in range(4):
+        ax = fig.add_subplot(2, 2, i+1, projection='3d')
+        band_idx = central_start + i
+        
+        surf = ax.plot_surface(kx_grid, ky_grid, band_energies_2d[:, :, band_idx],
+                              cmap='viridis', alpha=0.8)
+        
+        ax.set_xlabel('kx', fontsize=10)
+        ax.set_ylabel('ky', fontsize=10)
+        ax.set_zlabel('Energy (eV)', fontsize=10)
+        ax.set_title(f'3D: Flat Band {i+1}', fontsize=12)
+        
+        # Add colorbar
+        plt.colorbar(surf, ax=ax, shrink=0.5, aspect=5)
+    
+    plt.tight_layout()
+    plt.savefig(f"{output_dir}/8_3d_surface_plot.png", dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 9. Real-Space Localization of Flat-Band Wavefunctions
+    print("  9. Wavefunction localization...")
+    
+    # Select a few high-symmetry k-points
+    k_points_special = np.array([[0, 0],  # Gamma
+                                [2*np.sqrt(3)/3, 0],  # K
+                                [np.sqrt(3)/2, 0.5]])  # M
+    
+    wavefunctions = tbg.compute_wavefunctions(k_points_special)
+    
+    fig, axes = plt.subplots(3, 4, figsize=(16, 12))
+    
+    k_labels = ['Γ', 'K', 'M']
+    
+    for k_idx, k_label in enumerate(k_labels):
+        for band_idx in range(4):
+            ax = axes[k_idx, band_idx]
+            
+            # Plot wavefunction amplitude in G-space
+            wf = wavefunctions[k_idx, band_idx]
+            amplitudes = np.sum(np.abs(wf)**2, axis=1)  # Sum over sublattices
+            
+            # Create scatter plot of amplitudes vs G-vector positions
+            G_x = tbg.G_vectors[:, 0]
+            G_y = tbg.G_vectors[:, 1]
+            
+            scatter = ax.scatter(G_x, G_y, c=amplitudes, s=100*amplitudes/np.max(amplitudes),
+                               cmap='viridis', alpha=0.7)
+            
+            ax.set_title(f'{k_label}-point, Band {band_idx+1}', fontsize=10)
+            ax.set_xlabel('Gx', fontsize=9)
+            ax.set_ylabel('Gy', fontsize=9)
+            ax.grid(True, alpha=0.3)
+            
+            # Add colorbar
+            plt.colorbar(scatter, ax=ax)
+    
+    plt.tight_layout()
+    plt.savefig(f"{output_dir}/9_wavefunction_localization.png", dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # Generate summary report
+    print("  10. Summary report...")
+    with open(f"{output_dir}/analysis_summary.txt", 'w') as f:
+        f.write("Twisted Bilayer Graphene - Bistritzer-MacDonald Model Analysis\n")
+        f.write("=" * 60 + "\n\n")
+        f.write(f"Model Parameters:\n")
+        f.write(f"  Twist angle: {np.rad2deg(tbg.theta):.3f}°\n")
+        f.write(f"  Number of shells: {tbg.shells}\n")
+        f.write(f"  Basis size: {len(tbg.G_vectors)} G-vectors\n")
+        f.write(f"  Total bands: {tbg.n_bands}\n")
+        f.write(f"  Energy scale: {tbg.E_scale:.3f} eV\n")
+        f.write(f"  Moiré lattice constant: {tbg.a_moire:.1f} Å\n\n")
+        
+        f.write("Generated Files:\n")
+        f.write("  1. 1_full_band_structure.png - Complete band structure\n")
+        f.write("  2. 2_flat_bands_zoom.png - Zoomed flat bands\n")
+        f.write("  3. 3_density_of_states.png - DOS calculation\n")
+        f.write("  4. 4_angle_dependence.png - Twist angle dependence\n")
+        f.write("  5. 5_convergence_analysis.png - Basis size convergence\n")
+        f.write("  6. 6_particle_hole_symmetry.png - Symmetry validation\n")
+        f.write("  7. 7_2d_band_structure.png - 2D momentum space\n")
+        f.write("  8. 8_3d_surface_plot.png - 3D surface plots\n")
+        f.write("  9. 9_wavefunction_localization.png - Wavefunction analysis\n")
+        f.write("  10. analysis_summary.txt - This summary file\n")
+    
+    print(f"\nAnalysis complete! All files saved to '{output_dir}/'")
+    print("Generated 9 plots + 1 summary file")
+
 def main():
     """
     Main function to run the TBG band structure calculation.
@@ -438,6 +862,9 @@ def main():
     # Plot results
     print("\nGenerating band structure plot...")
     tbg.plot_band_structure(k_distances, eigenvalues, labels, label_positions)
+    
+    # Generate comprehensive analysis
+    generate_comprehensive_analysis(tbg, eigenvalues, k_path, k_distances, labels, label_positions)
     
     # Additional analysis
     print(f"\nModel completed successfully!")
