@@ -10,6 +10,13 @@ Bistritzer, R., & MacDonald, A. H. (2011). Moiré bands in twisted double-layer 
 
 Cao, Y., et al. (2018). Unconventional superconductivity in magic-angle graphene superlattices. Nature, 556(7699), 43-50.
 
+### Requirements
+```bash
+numpy >= 1.19.0
+matplotlib >= 3.3.0
+scipy >= 1.5.0
+```
+
 ### Prerequisites
 
 Install required Python packages:
@@ -60,7 +67,99 @@ pip install numpy scipy matplotlib
 - File descriptions
 - Model validation metrics
 
+# Twisted Bilayer Graphene - Bistritzer-MacDonald Continuum Model
 
+This implementation computes the electronic band structure of twisted bilayer graphene (TBG) using the continuum model approach of Bistritzer and MacDonald. The model describes how two graphene sheets twisted by a small angle create a moiré superlattice with flat bands near the magic twist angle (~1.1°). This code provides a complete framework for studying the electronic properties that lead to correlated physics and superconductivity in TBG.
+
+## Features
+
+### Core Calculations
+- **Moiré Superlattice Generation**: Automatic generation of moiré reciprocal lattice vectors up to specified number of shells
+- **Hamiltonian Construction**: Full Bistritzer-MacDonald Hamiltonian including:
+ - Intralayer terms with rotated Dirac cones for each graphene layer
+ - Interlayer tunneling with AA and AB stacking configurations
+ - Configurable coupling strengths and twist angles
+- **Band Structure Computation**: Eigenvalue solving along high-symmetry k-paths (Γ → K → M → Γ)
+- **Density of States (DOS)**: Gaussian-broadened DOS calculation with customizable energy ranges
+- **2D Band Structure**: Full Brillouin zone mapping for momentum-space visualization
+- **Wavefunction Analysis**: Computation and visualization of flat-band wavefunctions
+
+### Analysis Tools
+- **Convergence Testing**: Systematic analysis of results vs basis set size (number of shells)
+- **Twist Angle Dependence**: Automated calculation of bandwidth and gap vs twist angle
+- **Validation Metrics**: 
+ - Flat band bandwidth quantification
+ - Band gap measurements at high-symmetry points
+ - Particle-hole symmetry verification
+ - Energy scale validation
+- **Magic Angle Detection**: Identification of twist angles with minimal flat band bandwidth
+
+## Visualization & Output
+
+### Standard Plots
+- **Full Band Structure**: Complete electronic band structure along high-symmetry paths
+- **Flat Band Focus**: Zoomed view highlighting the four central flat bands near charge neutrality
+- **Density of States**: Energy-resolved DOS showing van Hove singularities
+- **2D Band Maps**: Contour plots of band energies across the full Brillouin zone
+- **3D Surface Plots**: Three-dimensional visualization of band dispersion
+- **Wavefunction Localization**: Real-space and momentum-space wavefunction analysis
+
+### Comprehensive Analysis Suite
+The `generate_comprehensive_analysis()` function produces:
+1. Full band structure plots
+2. Zoomed flat band visualization
+3. Density of states calculation
+4. Twist angle dependence analysis
+5. Convergence testing plots
+6. Particle-hole symmetry validation
+7. 2D momentum-space band maps
+8. 3D surface plots of band energies
+9. Wavefunction localization analysis
+10. Detailed summary report
+
+All outputs are saved as high-quality PNG files (300 DPI) with accompanying analysis summary.
+
+## Physical Significance
+
+### Moiré Physics
+- **Magic Angle Behavior**: The code accurately reproduces the magic angle (~1.08°) where flat bands emerge
+- **Flat Band Formation**: Demonstrates how interlayer coupling creates nearly dispersionless bands
+- **Correlated Physics**: Provides the electronic structure foundation for understanding superconductivity and correlated insulator states
+
+### Key Physical Quantities
+- **Bandwidth**: Flat band bandwidth typically ~10-50 meV near magic angle
+- **Energy Gaps**: Band gaps at high-symmetry points indicating topological properties
+- **Wavefunction Localization**: Real-space localization leading to strong correlations
+- **Particle-Hole Symmetry**: Validation of fundamental symmetries in the model
+
+### Experimental Relevance
+- **Transport Properties**: Band structure directly relates to electrical conductivity
+- **Optical Spectroscopy**: DOS and band gaps connect to optical absorption experiments
+- **STM/STS**: Local density of states relevant for scanning tunneling measurements
+- **ARPES**: Momentum-resolved band structure for angle-resolved photoemission
+
+## Usage Example
+
+### Basic Band Structure Calculation
+
+```python
+# Import the module
+from tbg_model import TwistedBilayerGraphene
+
+# Initialize model at magic angle
+tbg = TwistedBilayerGraphene(twist_angle_deg=1.08, shells=3)
+
+# Generate k-point path and compute band structure
+k_path, k_distances, labels, label_positions = tbg.generate_k_path(n_points_per_segment=100)
+eigenvalues = tbg.compute_band_structure(k_path)
+
+# Validate and analyze results
+metrics = tbg.validate_results(eigenvalues, k_path)
+tbg.print_validation_metrics(metrics)
+
+# Plot band structure
+tbg.plot_band_structure(k_distances, eigenvalues, labels, label_positions)
+```
 
 ## Berry Curvature Analysis (`berry.py`)
 
