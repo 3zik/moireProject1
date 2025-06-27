@@ -53,7 +53,7 @@ L_m = a / (2 * np.sin(theta/2))                 # moiré period [m]
 Gm_phys = 4 * np.pi / (np.sqrt(3) * L_m)        # physical moiré G magnitude [1/m]
 
 # Generate G-vectors in physical units, then convert to dimensionless by dividing by k_theta
-def generate_G_vectors_physical(shells=3):
+def generate_G_vectors_physical(shells=4):
     b1_phys = Gm_phys * np.array([np.sqrt(3)/2, 1/2])
     b2_phys = Gm_phys * np.array([0, 1])
     Gs = []
@@ -81,6 +81,8 @@ def build_Hk(k_vec, G_vectors):
     # intralayer Dirac terms
     for m, G in enumerate(G_vectors):
         idx = 4*m
+        print("Sample k_vec:", k_vec)
+        print("Sample G:", G)
         k_top = R(+theta/2) @ (k_vec - G)
         k_bot = R(-theta/2) @ (k_vec - G)
         H0_top = k_top[0]*sigma_x + k_top[1]*sigma_y
@@ -100,17 +102,23 @@ def build_Hk(k_vec, G_vectors):
                 H[i2+2:i2+4, i1:i1+2]   = T_mats[j].conj().T
     return H
 
-# High-symmetry k-path Γ→K→M→Γ in dimensionless units
 def high_symmetry_path(num_k=60):
-    Gpt = np.array([0,0])
-    Kpt = np.array([2/3, 0])
-    Mpt = np.array([1/2, np.sqrt(3)/2])
+    # Approximate moiré reciprocal lattice vectors (dimensionless)
+    b1 = np.array([np.sqrt(3)/2, 1/2])
+    b2 = np.array([0, 1])
+
+    # Construct high-symmetry points of the moiré BZ
+    Γ = np.array([0.0, 0.0])
+    M = 0.5 * b1
+    K = (2 * b1 + b2) / 3
+
     path = []
-    for start, end in [(Gpt, Kpt), (Kpt, Mpt), (Mpt, Gpt)]:
-        for t in np.linspace(0,1,num_k,endpoint=False):
-            path.append((1-t)*start + t*end)
-    path.append(Gpt)
+    for start, end in [(Γ, K), (K, M), (M, Γ)]:
+        for t in np.linspace(0, 1, num_k, endpoint=False):
+            path.append((1 - t) * start + t * end)
+    path.append(Γ)
     return np.array(path)
+
 
 k_path = high_symmetry_path()
 
