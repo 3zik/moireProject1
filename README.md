@@ -1,6 +1,6 @@
 # Twisted Bilayer Graphene (TBG) Continuum Model Project
 
-This project implements the foundational Bistritzer–MacDonald (BM) continuum model for twisted bilayer graphene (TBG) band structure calculations. The model captures low-energy moiré bands arising from the relative twist of two graphene sheets near the magic angle (~1.1°).
+This project attempts to implement the foundational Bistritzer–MacDonald (BM) continuum model for twisted bilayer graphene (TBG) band structure calculations. The model captures low-energy moiré bands arising from the relative twist of two graphene sheets near the magic angle (~1.1°).
 
 ---
 
