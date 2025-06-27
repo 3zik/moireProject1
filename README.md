@@ -26,7 +26,7 @@ Install required Python packages:
 
 ```bash
 pip install numpy scipy matplotlib
-
+```
 
 ## References
 
